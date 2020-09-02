@@ -179,6 +179,7 @@ class BaseModel(ABC):
         Parameters:
             epoch (int) -- current epoch; used in the file name '%s_net_%s.pth' % (epoch, name)
         """
+        print(self.model_names)
         for name in self.model_names:
             if isinstance(name, str):
                 load_filename = '%s_net_%s.pth' % (epoch, name)
@@ -197,6 +198,18 @@ class BaseModel(ABC):
                 for key in list(state_dict.keys()):  # need to copy keys here because we mutate in loop
                     self.__patch_instance_norm_state_dict(state_dict, net, key.split('.'))
                 net.load_state_dict(state_dict)
+
+    def convert_to_onnx(self, model_name, input_data, onnx_path):
+        input_data = input_data.to(self.device)
+
+        for name in self.model_names:
+            if name != model_name:
+                continue
+
+            net = getattr(self, 'net' + name)
+            if isinstance(net, torch.nn.DataParallel):
+                net = net.module
+            torch.onnx.export(net, input_data, onnx_path, verbose=True)
 
     def print_networks(self, verbose):
         """Print the total number of parameters in the network and (if verbose) network architecture
